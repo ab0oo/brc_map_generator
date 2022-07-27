@@ -3,7 +3,7 @@ import fiona
 
 degOffset=45
 streetNames = ['Esplanade','A','B','C','D','E','F','G','H','I','J','K' ]
-streetDepths = [2500,440,290,290,290,290,490,290,290,290,150,150]
+streetDepths = [2500,440,290,290,290,290,490,290,290,290,190,190]
 radialNames = ['2:00','2:30','3:00','3:30','4:00','4:30','5:00','5:30','6:00', \
                '6:30','7:00','7:30','8:00','8:30','9:00','9:30','10:00' ]
 shortRadialNames = ['2:15','2:45','3:15','3:45','4:15','4:45','5:15','5:45','6:15', \
@@ -64,7 +64,6 @@ for r in range(degOffset+60,degOffset+301,15):
 idx=0
 shortRadial = degOffset+67.5
 while shortRadial < degOffset+300:
-    print(f"Short radial at {shortRadial}")
     street = []
     foo = geopy.distance.distance(feet=4590).destination(goldenSpike, bearing=shortRadial)
     street.append((foo.longitude,foo.latitude))
