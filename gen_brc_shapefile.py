@@ -11,6 +11,8 @@ shortRadialNames = ['2:15','2:45','3:15','3:45','4:15','4:45','5:15','5:45','6:1
                 
 currDist = 0;
 
+maxDistance = sum(streetDepths)
+
 # define schema
 schema = {
     'geometry':'LineString',
@@ -49,7 +51,7 @@ for r in range(degOffset+60,degOffset+301,15):
     street = []
     foo = geopy.distance.distance(feet=2500).destination(goldenSpike, bearing=r)
     street.append((foo.longitude,foo.latitude))
-    foo = geopy.distance.distance(feet=5760).destination(goldenSpike, bearing=r)
+    foo = geopy.distance.distance(feet=maxDistance).destination(goldenSpike, bearing=r)
     street.append((foo.longitude,foo.latitude))
     rowDict = {
         'geometry': {'type':'LineString',
@@ -67,7 +69,7 @@ while shortRadial < degOffset+300:
     street = []
     foo = geopy.distance.distance(feet=4590).destination(goldenSpike, bearing=shortRadial)
     street.append((foo.longitude,foo.latitude))
-    foo = geopy.distance.distance(feet=5760).destination(goldenSpike, bearing=shortRadial)
+    foo = geopy.distance.distance(feet=maxDistance).destination(goldenSpike, bearing=shortRadial)
     street.append((foo.longitude,foo.latitude))
     rowDict = {
         'geometry': {'type':'LineString',
@@ -88,7 +90,7 @@ for r in range(0,361,5):
     manring.append((foo.longitude,foo.latitude))
     foo = geopy.distance.distance(feet=320).destination(centerCamp, bearing=r)
     ring.append((foo.longitude,foo.latitude))
-    foo = geopy.distance.distance(feet=763).destination(centerCamp, bearing=r)
+    foo = geopy.distance.distance(feet=784).destination(centerCamp, bearing=r)
     ring2.append((foo.longitude,foo.latitude))
 
 mrDict = {
