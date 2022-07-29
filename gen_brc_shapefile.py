@@ -110,6 +110,7 @@ for name,distance in streets.items():
 
 # radial streets
 for name,r in radials.items():
+    # 3:00 plaza from man to esplanade
     if name == '3:00':
         street = []
         foo = geopy.distance.distance(feet=manRingRadius).destination(goldenSpike, bearing=r+degOffset)
@@ -123,7 +124,7 @@ for name,r in radials.items():
                 }
             }
         lineShp.write(rowDict)
-        # road from Center Camp Plaze camp to K
+    # 9:00 plaza from man to esplanade
     if name == '9:00':
         street = []
         foo = geopy.distance.distance(feet=manRingRadius).destination(goldenSpike, bearing=r+degOffset)
@@ -137,11 +138,10 @@ for name,r in radials.items():
                 }
             }
         lineShp.write(rowDict)
-        # road from Center Camp Plaze camp to K
+    # special rules for the 6:00 radial
     if name == '6:00':
         street = []
-        # special rules for the 6:00 radial
-        # road from Man Ring to Center Camp Plaze
+        # road from Man Ring to Center Camp Plaza
         foo = geopy.distance.distance(feet=manRingRadius).destination(goldenSpike, bearing=r+degOffset)
         street.append((foo.longitude,foo.latitude))
         foo = geopy.distance.distance(feet=distToCenterCamp-centerCampPlazaRadius).destination(goldenSpike, bearing=r+degOffset)
@@ -153,7 +153,7 @@ for name,r in radials.items():
                 }
             }
         lineShp.write(rowDict)
-        # road from Center Camp Plaze camp to K
+        # road from Center Camp Plaza to K
         street = []
         foo = geopy.distance.distance(feet=distToCenterCamp+centerCampPlazaRadius).destination(goldenSpike, bearing=r+degOffset)
         street.append((foo.longitude,foo.latitude))
@@ -167,32 +167,40 @@ for name,r in radials.items():
             })
         lineShp.write(rowDict)
     else:
-        street = []
+        # these are for "normal" Esplanade-to-K streets
         if r % 5 == 0:
-            foo = geopy.distance.distance(feet=streets['Esplanade']).destination(goldenSpike, bearing=r+degOffset)
-            street.append((foo.longitude,foo.latitude))
-            foo = geopy.distance.distance(feet=streets['K']).destination(goldenSpike, bearing=r+degOffset)
-            street.append((foo.longitude,foo.latitude))
-            rowDict = {
-                'geometry': {'type':'LineString',
-                    'coordinates':street},
-                'properties': {'Name': name,
+            start = geopy.distance.distance(feet=streets['Esplanade']).destination(goldenSpike, bearing=r+degOffset)
+            # we do this to provide a different segment for each block.  this is important for anyone
+            # using this map to do routing
+            for steetName,distance in streets.items():
+                street = []
+                street.append((start.longitude,start.latitude))
+                end = geopy.distance.distance(feet=distance).destination(goldenSpike, bearing=r+degOffset)
+                street.append((end.longitude,end.latitude))
+                rowDict = {
+                    'geometry': {'type':'LineString',
+                        'coordinates':street},
+                    'properties': {'Name': name,
+                        }
                     }
-                }
-            lineShp.write(rowDict)
+                lineShp.write(rowDict)
+                start = end
+        # these are for the :15/:45 short streets on the outer half of the city, F-K
         else:
-            foo = geopy.distance.distance(feet=streets['F']).destination(goldenSpike, bearing=r+degOffset)
-            street.append((foo.longitude,foo.latitude))
-            foo = geopy.distance.distance(feet=streets['K']).destination(goldenSpike, bearing=r+degOffset)
-            street.append((foo.longitude,foo.latitude))
-            rowDict = {
-                'geometry': {'type':'LineString',
-                    'coordinates':street},
-                'properties': {'Name': name,
+            start = geopy.distance.distance(feet=streets['F']).destination(goldenSpike, bearing=r+degOffset)
+            for streetName in ['G','H','I','J','K']:
+                street = []
+                street.append((start.longitude,start.latitude))
+                end = geopy.distance.distance(feet=streets[streetName]).destination(goldenSpike, bearing=r+degOffset)
+                street.append((end.longitude,end.latitude))
+                rowDict = {
+                    'geometry': {'type':'LineString',
+                        'coordinates':street},
+                    'properties': {'Name': name,
+                        }
                     }
-                }
-            lineShp.write(rowDict)
-
+                lineShp.write(rowDict)
+                start = end
 
 street = []
 # special rules for the 12:00 radial
