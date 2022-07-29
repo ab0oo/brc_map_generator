@@ -9,3 +9,13 @@ Future generations will generate GeoJSON, and possibly other output formats.
 In QGis, the shapefile renders like this:
 
 ![BRC 2022](./BRC_2022_city_layout.png)
+
+## Dockerfile
+
+### Build
+
+	docker build -t brc-map-generator .
+
+### Run
+
+	docker run --rm -v ${PWD}:/output brc-map-generator:latest
