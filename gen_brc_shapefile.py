@@ -3,7 +3,10 @@ import fiona
 import math
 
 # this will change every year for BM
-goldenSpike = [40.78634966315868, -119.20651954500156]
+# this LAT/LON is for the 2022 Golden Spike
+goldenSpike = [40.787030, -119.202740]
+# 2018 goldenSpike
+#goldenSpike = [40.78634966315868, -119.20651954500156]
 streetDepths = [2500,440,290,290,290,290,490,290,290,290,190,190]
 distToCenterCamp = 2900
 manRingRadius = 250
