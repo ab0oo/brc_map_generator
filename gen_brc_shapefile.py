@@ -303,6 +303,7 @@ tf = []
 for lat, lon in fivePoints:
     tf.append((lon,lat))
 
+# finally, build the trash fence.
 tf.append((fivePoints[0][1], fivePoints[0][0]))
 trashFence = { 
   'geometry': {'type':'LineString',
