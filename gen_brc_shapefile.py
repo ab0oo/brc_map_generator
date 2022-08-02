@@ -7,12 +7,17 @@ import math
 goldenSpike = [40.787030, -119.202740]
 # 2018 goldenSpike
 #goldenSpike = [40.78634966315868, -119.20651954500156]
-streetDepths = [2500,440,290,290,290,290,490,290,290,290,190,190]
-distToCenterCamp = 2900
+streetDepths = [2500,440,290,290,290,290,490,290,290,290,190,200]
+fivePoints = [ (40.783341, -119.233011),
+               (40.807777, -119.216715),
+               (40.803538, -119.181098),
+               (40.776488, -119.175400),
+               (40.764008, -119.207478)]
+distToCenterCamp = 3026
 manRingRadius = 250
 templeRingRadius = 125
-centerCampPlazaRadius = 300
-rodsRingRadius = 760
+centerCampPlazaRadius = 340
+rodsRingRadius = 783
 scale = 2
 
 # nothing below here should normally change.
@@ -28,7 +33,7 @@ streets = { 'Esplanade': 2500,
             'H': 5170,
             'I': 5460,
             'J': 5650,
-            'K': 5840 }
+            'K': 5850 }
 
 radials = { '2:00': 60.0,
             '2:15': 67.5,
@@ -294,7 +299,19 @@ rrDict = {
 }
 lineShp.write(rrDict)
 
+tf = []
+for lat, lon in fivePoints:
+    tf.append((lon,lat))
 
+tf.append((fivePoints[0][1], fivePoints[0][0]))
+trashFence = { 
+  'geometry': {'type':'LineString',
+      'coordinates':tf},
+  'properties': {'Name': 'Trash Fence',
+    }
+}
+
+lineShp.write(trashFence)
 
 lineShp.close()
 
