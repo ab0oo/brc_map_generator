@@ -4,7 +4,10 @@ import math
 
 # this will change every year for BM
 # this LAT/LON is for the 2022 Golden Spike
-goldenSpike = [40.787030, -119.202740]
+# 2023 Golden Spike
+goldenSpike = [ 40.786400, -119.203500 ]
+# 2022 golden spike
+#goldenSpike = [40.787030, -119.202740]
 # 2018 goldenSpike
 #goldenSpike = [40.78634966315868, -119.20651954500156]
 streetDepths = [2500,440,290,290,290,290,490,290,290,290,190,195]
