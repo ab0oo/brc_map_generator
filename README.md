@@ -3,12 +3,12 @@
 This set of python scripts generates geospatially accurate maps for Black Rock City, home of Burning Man.
 
 To build/run:
-'
+```
 python -m venv .venv
 . .venv/bin/activate
 pip install -r requirements.txt
 python3 ./gen_brc_shapefile.py
-'
+```
 
 Currently, it generates the street layout based on the 2023 proposed layout, and outputs it in ESRI Shapefile format.
 
