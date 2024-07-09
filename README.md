@@ -1,3 +1,5 @@
+<B1>This has not been updated for 2024 (city without Rod's Ring Road) yet</B1>
+
 # Black Rock City Map Generator
 
 This set of python scripts generates geospatially accurate maps for Black Rock City, home of Burning Man.
