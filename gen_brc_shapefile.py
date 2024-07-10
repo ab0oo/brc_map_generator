@@ -24,6 +24,7 @@ centerCampPlazaRadius = 340
 rodsRingRadius = 783
 scale = 2
 RAD_PER_DEG = 2 * math.pi / 360.0
+STEPS_PER_ARC = 36
 
 # nothing below here should normally change.
 cityOffsetAngle=45
@@ -41,38 +42,41 @@ streets = { 'Esplanade': 2500,
             'K': 5845 }
 
 radials = { '2:00': 60.0,
-            '2:15': 67.5,
             '2:30': 75.0,
-            '2:45': 82.5,
             '3:00': 90.0,
-            '3:15': 97.5,
             '3:30': 105.0,
-            '3:45': 112.5,
             '4:00': 120.0,
-            '4:15': 127.5,
             '4:30': 135.0,
-            '4:45': 142.5,
             '5:00': 150.0,
-            '5:15': 157.5,
             '5:30': 165.0,
-            '5:45': 172.5,
             '6:00': 180.0,
-            '6:15': 187.5,
             '6:30': 195.0,
-            '6:45': 202.5,
             '7:00': 210.0,
-            '7:15': 217.5,
             '7:30': 225.0,
-            '7:45': 232.5,
             '8:00': 240.0,
-            '8:15': 247.5,
             '8:30': 255.0,
-            '8:45': 262.5,
             '9:00': 270.0,
-            '9:15': 277.5,
             '9:30': 285.0,
-            '9:45': 292.5,
             '10:00': 300 }
+
+community_paths = {
+            '2:15': 67.5,
+            '2:45': 82.5,
+            '3:15': 97.5,
+            '3:45': 112.5,
+            '4:15': 127.5,
+            '4:45': 142.5,
+            '5:15': 157.5,
+            '5:45': 172.5,
+            '6:15': 187.5,
+            '6:45': 202.5,
+            '7:15': 217.5,
+            '7:45': 232.5,
+            '8:15': 247.5,
+            '8:45': 262.5,
+            '9:15': 277.5,
+            '9:45': 292.5 }
+            
 
 def getStreetByDeg( deg:int ) -> str:
     for k,v in radials.items():
@@ -91,7 +95,8 @@ lineShp = fiona.open('bm_2023_lines.shp',
                         'geometry':'LineString',
                         'properties':[('Name','str'),
                                       ('FID','str'),
-                                      ('Length','float')]
+                                      ('Length','float'),
+                                      ('Type','str')]
                      },
                      crs = "EPSG:4326")
 
@@ -105,55 +110,57 @@ polyShp = fiona.open('bm_2023_poly.shp',
 
 # annular streets
 idx=0
-fid= -1
+fid=0
 for name,distance in streets.items():
     for clock,streetDegree in radials.items():
         if ( clock=="10:00" ):
             continue
         if ( clock in ('5:30', '5:45', '6:00','6:15') and name in ('B','C')):
             continue
-        annular = []
         startAngle = streetDegree + cityOffsetAngle
         # this causes us to skip the :15 streets when inside F
         if ( distance < 4101 ):
             stepAngle = 15
-            if streetDegree % 15 != 0:
-               continue
+            doIt = 1
         else:
             stepAngle = 7.5
-        endAngle = startAngle + stepAngle
-        streetLength = distance * ( ( endAngle - startAngle ) * RAD_PER_DEG )
-        steps = math.floor(streetLength / 25 )
-        stepDeg = 25 / distance / RAD_PER_DEG
-        cc = False
-        for d in range(0,steps+1):
-            bearing = startAngle + d*stepDeg
-            pt = geopy.distance.distance(feet=distance).destination(goldenSpike, bearing=bearing)
-            if geopy.distance.distance(pt,centerCamp).feet < rodsRingRadius: 
-                cc = True
-            else:
+            doIt = 2
+        for i in range(doIt):
+            annular = []
+            endAngle = startAngle + stepAngle
+            streetLength = distance * ( ( endAngle - startAngle ) * RAD_PER_DEG )
+            steps = math.floor(streetLength / STEPS_PER_ARC )
+            stepDeg = STEPS_PER_ARC / distance / RAD_PER_DEG
+            cc = False
+            for d in range(0,steps+1):
+                bearing = startAngle + d*stepDeg
+                pt = geopy.distance.distance(feet=distance).destination(goldenSpike, bearing=bearing)
+                if geopy.distance.distance(pt,centerCamp).feet < rodsRingRadius: 
+                    cc = True
+                else:
+                    annular.append((pt.longitude,pt.latitude))
+            # this pins the end of the segment at the terminous of the segment, unless it's inside Rod's Ring Road
+            if ( cc == False ):
+                pt = geopy.distance.distance(feet=distance).destination(goldenSpike, bearing=endAngle)
                 annular.append((pt.longitude,pt.latitude))
-        # this pins the end of the segment at the terminous of the segment, unless it's inside Rod's Ring Road
-        if ( cc == False ):
-            pt = geopy.distance.distance(feet=distance).destination(goldenSpike, bearing=endAngle)
-            annular.append((pt.longitude,pt.latitude))
-        fid+=1
-        rowDict = {
-                'geometry': {'type':'LineString',
-                            'coordinates':annular},
-                'properties': {'Name': name,
-                               'FID': fid,
-                               'Length': streetLength,
+            fid+=1
+            rowDict = {
+                    'geometry': {'type':'LineString',
+                                'coordinates':annular},
+                    'properties': {'Name': name,
+                                'FID': fid,
+                                'Length': streetLength,
+                                'Type': 'Road',
+                        }
                     }
-                }
-        lineShp.write(rowDict)
+            lineShp.write(rowDict)
+            startAngle = endAngle
 
 # radial streets
 for name,r in radials.items():
     # 3:00 road from man to esplanade
     if name == '3:00':
         street = []
-        #streetStart = geopy.distance.distance(feet=manRingRadius).destination(goldenSpike, bearing=r+cityOffsetAngle)
         streetStart = geopy.Point(goldenSpike[0], goldenSpike[1])
         street.append((streetStart.longitude,streetStart.latitude))
         streetEnd = geopy.distance.distance(feet=streets['Esplanade']).destination(goldenSpike, bearing=r+cityOffsetAngle)
@@ -166,13 +173,13 @@ for name,r in radials.items():
             'properties': {'Name': name,
                            'FID': fid,
                            'Length': streetLength,
+                           'Type': 'Road',
                 }
             }
         lineShp.write(rowDict)
     # 9:00 road from man to esplanade
     if name == '9:00':
         street = []
-        #streetStart = geopy.distance.distance(feet=manRingRadius).destination(goldenSpike, bearing=r+cityOffsetAngle)
         streetStart = geopy.Point(goldenSpike[0], goldenSpike[1])
         street.append((streetStart.longitude,streetStart.latitude))
         streetEnd = geopy.distance.distance(feet=streets['Esplanade']).destination(goldenSpike, bearing=r+cityOffsetAngle)
@@ -185,6 +192,7 @@ for name,r in radials.items():
             'properties': {'Name': name,
                            'FID': fid,
                            'Length': streetLength,
+                           'Type': 'Road',
                 }
             }
         lineShp.write(rowDict)
@@ -205,6 +213,7 @@ for name,r in radials.items():
             'properties': {'Name': name,
                            'FID': fid,
                            'Length': streetLength,
+                           'Type': 'Road',
                 }
             }
         lineShp.write(rowDict)
@@ -222,52 +231,57 @@ for name,r in radials.items():
             'properties': {'Name': name,
                            'FID': fid,
                            'Length': streetLength,
+                           'Type': 'Road',
                 }
             })
         lineShp.write(rowDict)
     else:
         # these are for "normal" Esplanade-to-K streets
-        if r % 5 == 0:
-            start = geopy.distance.distance(feet=streets['Esplanade']).destination(goldenSpike, bearing=r+cityOffsetAngle)
-            # we do this to provide a different segment for each block.  this is important for anyone
-            # using this map to do routing
-            for steetName,distance in streets.items():
-                street = []
-                street.append((start.longitude,start.latitude))
-                end = geopy.distance.distance(feet=distance).destination(goldenSpike, bearing=r+cityOffsetAngle)
-                street.append((end.longitude,end.latitude))
-                streetLength = round(GD(start,end).feet)
-                fid+=1
-                rowDict = {
-                    'geometry': {'type':'LineString',
-                        'coordinates':street},
-                    'properties': {'Name': name,
-                                   'FID': fid,
-                                   'Length': streetLength,
-                        }
-                    }
-                lineShp.write(rowDict)
-                start = end
-        # these are for the :15/:45 short streets on the outer half of the city, F-K
-        else:
-            start = geopy.distance.distance(feet=streets['F']).destination(goldenSpike, bearing=r+cityOffsetAngle)
-            for streetName in ['G','H','I','J','K']:
-                street = []
-                street.append((start.longitude,start.latitude))
-                end = geopy.distance.distance(feet=streets[streetName]).destination(goldenSpike, bearing=r+cityOffsetAngle)
-                street.append((end.longitude,end.latitude))
-                streetLength = round(GD(start,end).feet)
-                fid+=1
-                rowDict = {
-                    'geometry': {'type':'LineString',
-                        'coordinates':street},
-                    'properties': {'Name': name,
-                                   'FID': fid,
-                                   'Length': streetLength,
-                        }
-                    }
-                lineShp.write(rowDict)
-                start = end
+        start = geopy.distance.distance(feet=streets['Esplanade']).destination(goldenSpike, bearing=r+cityOffsetAngle)
+        # we do this to provide a different segment for each block.  this is important for anyone
+        # using this map to do routing
+        for streetName,distance in streets.items():
+            if streetName == 'Esplanade':
+                continue
+            street = []
+            street.append((start.longitude,start.latitude))
+            end = geopy.distance.distance(feet=distance).destination(goldenSpike, bearing=r+cityOffsetAngle)
+            street.append((end.longitude,end.latitude))
+            streetLength = round(GD(start,end).feet)
+            fid+=1
+            rowDict = {
+                'geometry': {'type':'LineString',
+                'coordinates':street},
+                'properties': {'Name': name,
+                    'FID': fid,
+                    'Length': streetLength,
+                    'Type': 'Road',
+                }
+            }
+            lineShp.write(rowDict)
+            start = end
+
+for name,r in community_paths.items():
+    # these are for the :15/:45 short streets on the outer half of the city, F-K
+    start = geopy.distance.distance(feet=streets['F']).destination(goldenSpike, bearing=r+cityOffsetAngle)
+    for streetName in ['G','H','I','J','K']:
+        street = []
+        street.append((start.longitude,start.latitude))
+        end = geopy.distance.distance(feet=streets[streetName]).destination(goldenSpike, bearing=r+cityOffsetAngle)
+        street.append((end.longitude,end.latitude))
+        streetLength = round(GD(start,end).feet)
+        fid+=1
+        rowDict = {
+            'geometry': {'type':'LineString',
+                'coordinates':street},
+            'properties': {'Name': name,
+                           'FID': fid,
+                           'Length': streetLength,
+                           'Type': 'Community Path',
+                }
+            }
+        lineShp.write(rowDict)
+        start = end
 
 street = []
 # special rules for the 12:00 radial
@@ -284,6 +298,7 @@ rowDict = {
     'properties': {'Name': '12:00',
                    'FID': fid,
                    'Length': streetLength,
+                   'Type': 'Road',
         }
     }
 lineShp.write(rowDict)
@@ -322,6 +337,7 @@ mrDict = {
   'properties': {'Name': 'Man Ring',
                  'FID': fid,
                  'Length': round(manRingRadius * 2 * math.pi),
+                 'Type': 'Road',
     }
 }
 lineShp.write(mrDict)
@@ -333,6 +349,7 @@ ccDict = {
   'properties': {'Name': 'Center Camp Plaza',
                  'FID': fid,
                  'Length': round(centerCampPlazaRadius * 2 * math.pi),
+                 'Type': 'Road',
     }
 }
 lineShp.write(ccDict)
@@ -344,6 +361,7 @@ rrDict = {
   'properties': {'Name': 'Rod\'s Ring Road',
                  'FID': fid,
                  'Length': round(rodsRingRadius * 2 * math.pi),
+                 'Type': 'Road',
     }
 }
 lineShp.write(rrDict)
@@ -355,6 +373,7 @@ rrDict = {
   'properties': {'Name': 'Temple Ring Road',
                  'FID': fid,
                  'Length': round(templeRingRadius * 2 * math.pi),
+                 'Type': 'Road',
     }
 }
 lineShp.write(rrDict)
@@ -367,6 +386,7 @@ rrDict = {
   'properties': {'Name': 'Center Camp 3:00 Road',
                  'FID': fid,
                  'Length': streetLength,
+                 'Type': 'Road',
     }
 }
 lineShp.write(rrDict)
@@ -379,6 +399,7 @@ rrDict = {
   'properties': {'Name': 'Center Camp 9:00 Road',
                  'FID': fid,
                  'Length': streetLength,
+                 'Type': 'Road',
     }
 }
 lineShp.write(rrDict)
@@ -404,8 +425,110 @@ for i in range(len(fivePoints)):
       'properties': {'Name': name,
                  'FID': fid,
                  'Length': streetLength,
+                 'Type': 'Trash Fence',
         }
     }
     lineShp.write(trashFence)
+
+## below here, we're creating routes, not actual roads.  This facilitates Djikstra-style
+## routing algorithms.  Inside the city, we have to stick to roads.  In inner plays, 
+## the whole surface is basically a shortcut.
+
+visited = []
+for startName,startR in radials.items():
+    for endName, endR in radials.items():
+        if startName == endName:
+            continue
+        if endName in visited:
+            continue
+        ## first we do esplanade to esplanade routes
+        route = []
+        routeStart = geopy.distance.distance(feet=streets['Esplanade']).destination(goldenSpike, bearing=startR+cityOffsetAngle)
+        routeEnd = geopy.distance.distance(feet=streets['Esplanade']).destination(goldenSpike, bearing=endR+cityOffsetAngle)
+        route.append((routeStart.longitude, routeStart.latitude))
+        route.append((routeEnd.longitude, routeEnd.latitude))
+        routeLength = round(GD(routeStart,routeEnd).feet)
+        fid+=1
+        routeName=f"{startName}-{endName}"
+        playaRoute = { 
+        'geometry': {'type':'LineString',
+            'coordinates':route},
+        'properties': {'Name': routeName,
+                    'FID': fid,
+                    'Length': routeLength,
+                    'Type': 'Route',
+            }
+        }
+        lineShp.write(playaRoute)
+    visited.append(startName)
+
+for endName, endR in radials.items():
+    # then esplanade-to-man
+    route = []
+    routeStart = geopy.distance.distance(feet=0).destination(goldenSpike, bearing=0+cityOffsetAngle)
+    routeEnd = geopy.distance.distance(feet=streets['Esplanade']).destination(goldenSpike, bearing=endR+cityOffsetAngle)
+    route.append((routeStart.longitude, routeStart.latitude))
+    route.append((routeEnd.longitude, routeEnd.latitude))
+    routeLength = round(GD(routeStart,routeEnd).feet)
+    fid+=1
+    routeName=f"Man-{endName}"
+    playaRoute = { 
+    'geometry': {'type':'LineString',
+        'coordinates':route},
+    'properties': {'Name': routeName,
+                'FID': fid,
+                'Length': routeLength,
+                'Type': 'Route',
+        }
+    }
+    lineShp.write(playaRoute)
+
+for endName, endR in radials.items():
+    # then esplanade to temple
+    route = []
+    routeStart = geopy.distance.distance(feet=streets['Esplanade']).destination(goldenSpike, bearing=0+cityOffsetAngle)
+    routeEnd = geopy.distance.distance(feet=streets['Esplanade']).destination(goldenSpike, bearing=endR+cityOffsetAngle)
+    route.append((routeStart.longitude, routeStart.latitude))
+    route.append((routeEnd.longitude, routeEnd.latitude))
+    routeLength = round(GD(routeStart,routeEnd).feet)
+    fid+=1
+    routeName=f"Temple-{endName}"
+    playaRoute = { 
+    'geometry': {'type':'LineString',
+        'coordinates':route},
+    'properties': {'Name': routeName,
+                'FID': fid,
+                'Length': routeLength,
+                'Type': 'Route',
+        }
+    }
+    lineShp.write(playaRoute)
+
+# finally, close the routes at the open end of the city
+for sName, sDist in streets.items():
+    for eName, eDist in streets.items():
+        if sName == eName:
+            continue
+        route =[]
+        routeStart=geopy.distance.distance(feet=sDist).destination(goldenSpike, bearing=radials['2:00']+ cityOffsetAngle)
+        routeEnd=geopy.distance.distance(feet=eDist).destination(goldenSpike, bearing=radials['10:00']+ cityOffsetAngle)
+        route.append((routeStart.longitude, routeStart.latitude))
+        route.append((routeEnd.longitude, routeEnd.latitude))
+        routeLength = round(GD(routeStart,routeEnd).feet)
+        fid+=1
+        routeName=f"2:00&{sName}-10:00&{eName}"
+        playaRoute = { 
+            'geometry': {
+                'type':'LineString',
+                'coordinates':route
+            },
+            'properties': {
+                'Name': routeName,
+                'FID': fid,
+                'Length': routeLength,
+                'Type': 'Route',
+            }
+        }
+        lineShp.write(playaRoute)
 
 lineShp.close()
