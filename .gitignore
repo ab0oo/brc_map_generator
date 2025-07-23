@@ -1,6 +1,7 @@
-bm_*.cpg
-bm_*.dbf
-bm_*.prj
-bm_*.shp
-bm_*.shx
+*.cpg
+*.dbf
+*.prj
+*.shp
+*.shx
+*.geojson
 .venv/

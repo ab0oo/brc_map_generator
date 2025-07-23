@@ -2,45 +2,107 @@ import geopy.distance
 from geopy.distance import geodesic as GD
 import fiona
 import math
+import sys
 
+def calculate_initial_compass_bearing(start_point, end_point):
+       """
+       Calculates the bearing between two points.
+
+       Args:
+           start_point: A tuple representing the latitude and longitude of the starting point.
+           end_point: A tuple representing the latitude and longitude of the ending point.
+
+       Returns:
+           The bearing in degrees (0-360).
+       """
+       lat1 = radians(start_point[0])
+       lat2 = radians(end_point[0])
+       lon_diff = radians(end_point[1] - start_point[1])
+
+       y = math.sin(lon_diff) * math.cos(lat2)
+       x = math.cos(lat1) * math.sin(lat2) - math.sin(lat1) * math.cos(lat2) * math.cos(lon_diff)
+
+       bearing_rad = math.atan2(y, x)
+       bearing_deg = (math.degrees(bearing_rad) + 360) % 360
+
+       return bearing_deg
+
+
+def radians(degrees):
+    return degrees * math.pi / 180
+
+
+year = 2025
 # this will change every year for BM
 # this LAT/LON is for the 2022 Golden Spike
+#2025 goldenSpike
+goldenSpike = [40.786958, -119.202994]
+#2024 goldenSpike
+#goldenSpike = [40.786969, -119.204101]
 #2023 goldenSpike
-goldenSpike = [40.786400, -119.203500]
+#goldenSpike = [40.786400, -119.203500]
 #2022 goldenSpike
 #goldenSpike = [40.787030, -119.202740]
 # 2018 goldenSpike
 #goldenSpike = [40.78634966315868, -119.20651954500156]
 
-fivePoints = [ (40.782814, -119.233566),
-               (40.807028, -119.217274),
-               (40.802722, -119.181931),
-               (40.775857, -119.176407),
-               (40.763558, -119.208301)]
-distToCenterCamp = 3026
+fivePoints = [ (40.783388, -119.232725),
+               (40.807354, -119.216621),
+               (40.803107, -119.181667),
+               (40.776557, -119.176181),
+               (40.764363, -119.207719)]
+distToCenterCamp = 2999
+distanceToEsplanadeCenter = 2500
 manRingRadius = 250
 templeRingRadius = 125
-centerCampPlazaRadius = 340
-rodsRingRadius = 783
+centerCampPlazaRadius = 520
+cityOffsetAngle=45
+rodsRingRadius = 775 # after 2023 this became the outer center camp ring
 scale = 2
 RAD_PER_DEG = 2 * math.pi / 360.0
 STEPS_PER_ARC = 36
+street_width = { 'Esplanade' : 40,
+                 'A': 30,
+                 'B': 30,
+                 'C': 30,
+                 'D': 30,
+                 'E': 40,
+                 'F': 30,
+                 'G': 30,
+                 'H': 30,
+                 'I': 30,
+                 'J': 30,
+                 'K': 50 }
+
+block_depth = { 'Esplanade' : 0,
+            'A': 400,
+            'B': 250,
+            'C': 250,
+            'D': 250,
+            'E': 250,
+            'F': 450,
+            'G': 250,
+            'H': 250,
+            'I': 250,
+            'J': 150,
+            'K': 150 }
+
 
 # nothing below here should normally change.
-cityOffsetAngle=45
-streets = { 'Esplanade': 2500,
-            'A': 2940,
-            'B': 3230,
-            'C': 3520,
-            'D': 3810,
-            'E': 4100,
-            'F': 4590,
-            'G': 4880,
-            'H': 5170,
-            'I': 5460,
-            'J': 5650,
-            'K': 5845 }
+# this is feet to center of named road
+streets = {}
+prevDist = distanceToEsplanadeCenter
+prevWidth = 0
+for k,v in street_width.items():
+    if k == 'Esplanade':
+        streets[k] = distanceToEsplanadeCenter
+    else:
+        streets[k] = prevDist + prevWidth / 2 + v / 2 + block_depth[k]
+    prevWidth = v
+    prevDist = streets[k]
 
+print(streets)
+	
 radials = { '2:00': 60.0,
             '2:30': 75.0,
             '3:00': 90.0,
@@ -89,7 +151,8 @@ tm = geopy.distance.distance(feet=streets['Esplanade']).destination(goldenSpike,
 temple = [tm.latitude,tm.longitude]
 
 #open a fiona object
-lineShp = fiona.open('bm_2023_lines.shp', 
+filename = f'brc_{year}_lines.shp'
+lineShp = fiona.open(filename, 
                      mode='w', driver='ESRI Shapefile',
                      schema = {
                         'geometry':'LineString',
@@ -100,13 +163,13 @@ lineShp = fiona.open('bm_2023_lines.shp',
                      },
                      crs = "EPSG:4326")
 
-polyShp = fiona.open('bm_2023_poly.shp',
-                     mode='w', driver='ESRI Shapefile',
-                     schema = {
-                        'geometry':'Polygon',
-                        'properties':[('Name','str')]
-                     },
-                     crs = "EPSG:4326")
+#polyShp = fiona.open('bm_2023_poly.shp',
+#                     mode='w', driver='ESRI Shapefile',
+#                     schema = {
+#                        'geometry':'Polygon',
+#                        'properties':[('Name','str')]
+#                     },
+#                     crs = "EPSG:4326")
 
 # annular streets
 idx=0
@@ -115,11 +178,11 @@ for name,distance in streets.items():
     for clock,streetDegree in radials.items():
         if ( clock=="10:00" ):
             continue
-        if ( clock in ('5:30', '5:45', '6:00','6:15') and name in ('B','C')):
-            continue
+#        if ( clock in ('5:30', '5:45', '6:00','6:15') and name in ('B','C')):
+#            continue
         startAngle = streetDegree + cityOffsetAngle
         # this causes us to skip the :15 streets when inside F
-        if ( distance < 4101 ):
+        if ( distance < streets['F'] ):
             stepAngle = 15
             doIt = 1
         else:
@@ -135,7 +198,7 @@ for name,distance in streets.items():
             for d in range(0,steps+1):
                 bearing = startAngle + d*stepDeg
                 pt = geopy.distance.distance(feet=distance).destination(goldenSpike, bearing=bearing)
-                if geopy.distance.distance(pt,centerCamp).feet < rodsRingRadius: 
+                if geopy.distance.distance(pt,centerCamp).feet <= centerCampPlazaRadius: 
                     cc = True
                 else:
                     annular.append((pt.longitude,pt.latitude))
@@ -303,7 +366,7 @@ rowDict = {
     }
 lineShp.write(rowDict)
 
-# center camp ring
+# various rings
 manring = []
 ring = []
 ring2 = []
@@ -316,20 +379,26 @@ for r in range(0,360*scale+1,1):
     foo = geopy.distance.distance(feet=centerCampPlazaRadius).destination(centerCamp, bearing=r/scale)
     ring.append((foo.longitude,foo.latitude))
     foo = geopy.distance.distance(feet=rodsRingRadius).destination(centerCamp, bearing=r)
-    ring2.append((foo.longitude,foo.latitude))
+    # the new Rod's Ring runs from 6:30 & A to 5:30 & A
+    rrToMan = round(GD(foo,goldenSpike).feet)
+    if rrToMan <= streets["A"]:
+        ring2.append((foo.longitude,foo.latitude))
     foo = geopy.distance.distance(feet=templeRingRadius).destination(temple, bearing=r)
     templeRing.append((foo.longitude,foo.latitude))
-    if r==90:
-        radialThreeStart = geopy.distance.distance(feet=centerCampPlazaRadius).destination(centerCamp, bearing=r+cityOffsetAngle)
-        radialThree.append((radialThreeStart.longitude,radialThreeStart.latitude))
-        radialThreeEnd = geopy.distance.distance(feet=streets['A']).destination(goldenSpike, bearing=radials['5:30']+cityOffsetAngle)
-        radialThree.append((radialThreeEnd.longitude,radialThreeEnd.latitude))
-    if r==270:
-        radialNineStart = geopy.distance.distance(feet=centerCampPlazaRadius).destination(centerCamp, bearing=r+cityOffsetAngle)
-        radialNine.append((radialNineStart.longitude,radialNineStart.latitude))
-        radialNineEnd = geopy.distance.distance(feet=streets['A']).destination(goldenSpike, bearing=radials['6:30']+cityOffsetAngle)
-        radialNine.append((radialNineEnd.longitude,radialNineEnd.latitude))
-        
+
+# for the semi-circle esplanade segment man-ward of center camp
+# notes: calculate the points at [56]:30 & A
+# then calculate the bearing from center-camp center to those two points
+# add in city rotational offset and draw circular segments between those to points
+fivethirtyAndA = geopy.distance.distance(feet=streets['A']).destination(
+    goldenSpike, bearing=cityOffsetAngle+radials['5:30'])
+sixthirtyAndA = geopy.distance.distance(feet=streets['A']).destination(
+    goldenSpike, bearing=cityOffsetAngle+radials['6:30'])
+startAngle = round(calculate_initial_compass_bearing(centerCamp, sixthirtyAndA))
+endAngle = round(calculate_initial_compass_bearing(centerCamp, fivethirtyAndA))
+print(f"Start angle is {startAngle}")
+print(f"End angle is {endAngle}")
+
 fid+=1
 mrDict = {
   'geometry': {'type':'LineString',
@@ -378,31 +447,31 @@ rrDict = {
 }
 lineShp.write(rrDict)
 
-streetLength = round(GD(radialThreeStart,radialThreeEnd).feet)
-fid+=1
-rrDict = {
-  'geometry': {'type':'LineString',
-      'coordinates':radialThree},
-  'properties': {'Name': 'Center Camp 3:00 Road',
-                 'FID': fid,
-                 'Length': streetLength,
-                 'Type': 'Road',
-    }
-}
-lineShp.write(rrDict)
-
-streetLength = round(GD(radialNineStart,radialNineEnd).feet)
-fid+=1
-rrDict = {
-  'geometry': {'type':'LineString',
-      'coordinates':radialNine},
-  'properties': {'Name': 'Center Camp 9:00 Road',
-                 'FID': fid,
-                 'Length': streetLength,
-                 'Type': 'Road',
-    }
-}
-lineShp.write(rrDict)
+#streetLength = round(GD(radialThreeStart,radialThreeEnd).feet)
+#fid+=1
+#rrDict = {
+#  'geometry': {'type':'LineString',
+#      'coordinates':radialThree},
+#  'properties': {'Name': 'Center Camp 3:00 Road',
+#                 'FID': fid,
+#                 'Length': streetLength,
+#                 'Type': 'Road',
+#    }
+#}
+##lineShp.write(rrDict)
+#
+#streetLength = round(GD(radialNineStart,radialNineEnd).feet)
+#fid+=1
+#rrDict = {
+#  'geometry': {'type':'LineString',
+#      'coordinates':radialNine},
+#  'properties': {'Name': 'Center Camp 9:00 Road',
+#                 'FID': fid,
+#                 'Length': streetLength,
+#                 'Type': 'Road',
+#    }
+#}
+#lineShp.write(rrDict)
 
 for i in range(len(fivePoints)):
     tf = []
@@ -433,6 +502,8 @@ for i in range(len(fivePoints)):
 ## below here, we're creating routes, not actual roads.  This facilitates Djikstra-style
 ## routing algorithms.  Inside the city, we have to stick to roads.  In inner plays, 
 ## the whole surface is basically a shortcut.
+## to generate, comment out the exit() line below
+sys.exit(0)
 
 visited = []
 for startName,startR in radials.items():
