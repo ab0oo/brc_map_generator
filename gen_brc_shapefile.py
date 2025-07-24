@@ -57,7 +57,7 @@ manRingRadius = 250
 templeRingRadius = 125
 centerCampPlazaRadius = 520
 cityOffsetAngle=45
-rodsRingRadius = 775 # after 2023 this became the outer center camp ring
+rodsRingRadius = 778 # after 2023 this became the outer center camp ring
 scale = 2
 RAD_PER_DEG = 2 * math.pi / 360.0
 STEPS_PER_ARC = 36
@@ -178,8 +178,8 @@ for name,distance in streets.items():
     for clock,streetDegree in radials.items():
         if ( clock=="10:00" ):
             continue
-#        if ( clock in ('5:30', '5:45', '6:00','6:15') and name in ('B','C')):
-#            continue
+        if clock in ('5:30', '5:45', '6:00','6:15') and name == 'Esplanade':
+            continue
         startAngle = streetDegree + cityOffsetAngle
         # this causes us to skip the :15 streets when inside F
         if ( distance < streets['F'] ):
@@ -378,11 +378,6 @@ for r in range(0,360*scale+1,1):
     manring.append((foo.longitude,foo.latitude))
     foo = geopy.distance.distance(feet=centerCampPlazaRadius).destination(centerCamp, bearing=r/scale)
     ring.append((foo.longitude,foo.latitude))
-    foo = geopy.distance.distance(feet=rodsRingRadius).destination(centerCamp, bearing=r)
-    # the new Rod's Ring runs from 6:30 & A to 5:30 & A
-    rrToMan = round(GD(foo,goldenSpike).feet)
-    if rrToMan <= streets["A"]:
-        ring2.append((foo.longitude,foo.latitude))
     foo = geopy.distance.distance(feet=templeRingRadius).destination(temple, bearing=r)
     templeRing.append((foo.longitude,foo.latitude))
 
@@ -394,10 +389,19 @@ fivethirtyAndA = geopy.distance.distance(feet=streets['A']).destination(
     goldenSpike, bearing=cityOffsetAngle+radials['5:30'])
 sixthirtyAndA = geopy.distance.distance(feet=streets['A']).destination(
     goldenSpike, bearing=cityOffsetAngle+radials['6:30'])
-startAngle = round(calculate_initial_compass_bearing(centerCamp, sixthirtyAndA))
-endAngle = round(calculate_initial_compass_bearing(centerCamp, fivethirtyAndA))
-print(f"Start angle is {startAngle}")
-print(f"End angle is {endAngle}")
+startAngle = round(calculate_initial_compass_bearing(centerCamp, sixthirtyAndA)) # should be ~327
+endAngle = round(calculate_initial_compass_bearing(centerCamp, fivethirtyAndA)) # should be ~123
+if endAngle<startAngle:
+    endAngle+=360
+for r in range(startAngle,endAngle+1,1):
+    b = r
+    if b > 360:
+        b-=360
+    # the new Rod's Ring runs from 6:30 & A to 5:30 & A
+    foo = geopy.distance.distance(feet=rodsRingRadius).destination(centerCamp, bearing=b)
+    ring2.append((foo.longitude,foo.latitude))
+
+
 
 fid+=1
 mrDict = {
