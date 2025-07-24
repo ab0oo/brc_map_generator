@@ -18,7 +18,7 @@ Future generations will generate GeoJSON, and possibly other output formats.
 
 In QGis, the shapefile renders like this:
 
-![BRC 2023](./BRC_2022_city_layout.png)
+![BRC 2025](./BRC_2025_city_layout.png)
 
 ## Dockerfile
 

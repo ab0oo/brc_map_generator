@@ -34,7 +34,7 @@ def radians(degrees):
 
 year = 2025
 # this will change every year for BM
-# this LAT/LON is for the 2022 Golden Spike
+# this LAT/LON is for the Golden Spike
 #2025 goldenSpike
 goldenSpike = [40.786958, -119.202994]
 #2024 goldenSpike
@@ -178,8 +178,8 @@ for name,distance in streets.items():
     for clock,streetDegree in radials.items():
         if ( clock=="10:00" ):
             continue
-        if clock in ('5:30', '5:45', '6:00','6:15') and name == 'Esplanade':
-            continue
+#        if clock in ('5:30', '5:45', '6:00','6:15') and name == 'Esplanade':
+#            continue
         startAngle = streetDegree + cityOffsetAngle
         # this causes us to skip the :15 streets when inside F
         if ( distance < streets['F'] ):
@@ -199,6 +199,8 @@ for name,distance in streets.items():
                 bearing = startAngle + d*stepDeg
                 pt = geopy.distance.distance(feet=distance).destination(goldenSpike, bearing=bearing)
                 if geopy.distance.distance(pt,centerCamp).feet <= centerCampPlazaRadius: 
+                    cc = True
+                elif geopy.distance.distance(pt,centerCamp).feet <= rodsRingRadius and name == 'Esplanade': 
                     cc = True
                 else:
                     annular.append((pt.longitude,pt.latitude))
