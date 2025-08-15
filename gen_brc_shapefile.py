@@ -36,7 +36,7 @@ year = 2025
 # this will change every year for BM
 # this LAT/LON is for the Golden Spike
 #2025 goldenSpike
-goldenSpike = [40.786958, -119.202994]
+goldenSpike = [40.7869634, -119.2030071]
 #2024 goldenSpike
 #goldenSpike = [40.786969, -119.204101]
 #2023 goldenSpike
